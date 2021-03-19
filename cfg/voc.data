@@ -1,0 +1,5 @@
+train  = data/2021_train.txt
+valid  =data/2021_test.txt
+names = data/voc.names
+backup = backup
+gpus  = 0
