@@ -34,7 +34,7 @@ dot_interval = 70  # batches
 evaluate = False
 conf_thresh = 0.25
 nms_thresh = 0.4
-iou_thresh = 0.5
+iou_thresh = 0.65
 
 # no test evalulation
 no_eval = False

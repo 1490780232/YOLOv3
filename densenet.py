@@ -19,7 +19,50 @@ densenet169_model_name = 'densenet169-b2777c0a.pth'
 densenet201_model_name = 'densenet201-c1103571.pth'
 densenet161_model_name = 'densenet161-8d451a50.pth'
 models_dir = os.path.expanduser(r'D:\liuyan2021\pth')
+class Non_local(nn.Module):
+    def __init__(self, in_channels, reduc_ratio=2):
+        super(Non_local, self).__init__()
 
+        self.in_channels = in_channels
+        self.inter_channels = in_channels // reduc_ratio
+
+        self.g = nn.Conv2d(in_channels=self.in_channels, out_channels=self.inter_channels,
+                           kernel_size=1, stride=1, padding=0)
+        self.W = nn.Sequential(
+            nn.Conv2d(in_channels=self.inter_channels, out_channels=self.in_channels,
+                      kernel_size=1, stride=1, padding=0),
+           nn.BatchNorm2d(self.in_channels),
+        )
+        nn.init.constant_(self.W[1].weight, 0.0)
+        nn.init.constant_(self.W[1].bias, 0.0)
+
+        self.theta = nn.Conv2d(in_channels=self.in_channels, out_channels=self.inter_channels,
+                               kernel_size=1, stride=1, padding=0)
+
+        self.phi = nn.Conv2d(in_channels=self.in_channels, out_channels=self.inter_channels,
+                             kernel_size=1, stride=1, padding=0)
+
+    def forward(self, x):
+        """
+                :param x: (b, t, h, w)
+                :return x: (b, t, h, w)
+        """
+        batch_size = x.size(0)
+        g_x = self.g(x).view(batch_size, self.inter_channels, -1)    #(b, t, h*w)
+        g_x = g_x.permute(0, 2, 1)  #(b, h*w, t)
+
+        theta_x = self.theta(x).view(batch_size, self.inter_channels, -1)  #(b, t, h*w)
+        theta_x = theta_x.permute(0, 2, 1)      #(b, h*w, t)
+        phi_x = self.phi(x).view(batch_size, self.inter_channels, -1) #(b, t, h*w)
+        f = torch.matmul(theta_x, phi_x)  #(b, h*w, t) .* (b, t, h*w) = (b, h*w, h*w)
+        N = f.size(-1)
+        f_div_C = f / N   #(b, h*w, h*w)
+        y = torch.matmul(f_div_C, g_x)  #(b, h*w, h*w) * (b, h*w, t)
+        y = y.permute(0, 2, 1).contiguous()
+        y = y.view(batch_size, self.inter_channels, *x.size()[2:])
+        W_y = self.W(y)
+        z = W_y + x
+        return z
 
 def densenet121(pretrained=False, **kwargs):
     model = DenseNet(num_init_features=64, growth_rate=32, block_config=(6, 12, 24, 16), **kwargs)
@@ -169,6 +212,7 @@ class _Transition(nn.Sequential):
         self.add_module('relu', nn.ReLU(inplace=True))
         self.add_module('conv', nn.Conv2d(num_input_features, num_output_features,
                                           kernel_size=1, stride=1, bias=False))
+        # self.add_module("nonlocal", Non_local(num_output_features))
         self.add_module('pool', nn.AvgPool2d(kernel_size=2, stride=2))
 def conv1x1(in_planes, out_planes, stride=1):
     return nn.Conv2d(in_planes, out_planes, kernel_size=1,
@@ -281,7 +325,7 @@ class DensnetYolo(nn.Module):
                 self.width = int(block['width'])
                 self.height = int(block['height'])
                 continue
-            elif block['type'] == 'densenet':
+            elif block['type'] == 'yolo':
                 yololayer = YoloLayer(use_cuda=self.use_cuda)
                 anchors = block['anchors'].split(',')
                 anchor_mask = block['mask'].split(',')

@@ -37,7 +37,6 @@ print('--- bn running_mean ---')
 print(m.models[0][1].running_mean)
 print('--- bn running_var ---')
 print(m.models[0][1].running_var)
-
 m.train()
 m = m.cuda()
 

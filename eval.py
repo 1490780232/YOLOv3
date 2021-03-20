@@ -18,11 +18,10 @@ from image import correct_yolo_boxes
 use_cuda      = True
 seed          = 22222
 eps           = 1e-5
-
 # Test parameters
-conf_thresh   = 0.25
+conf_thresh   = 0.5
 nms_thresh    = 0.4
-iou_thresh    = 0.71
+iou_thresh    = 0.5
 
 FLAGS = None
 
@@ -42,7 +41,6 @@ def main():
 
     global use_cuda
     use_cuda = torch.cuda.is_available() and (True if use_cuda is None else use_cuda)
-
     ###############
     torch.manual_seed(seed)
     if use_cuda:
@@ -57,7 +55,6 @@ def main():
     init_height  = model.height
 
     kwargs = {'num_workers': num_workers, 'pin_memory': True} if use_cuda else {}
-    
     global test_loader
     test_loader = torch.utils.data.DataLoader(
         dataset.listDataset(testlist, shape=(init_width, init_height),

@@ -100,7 +100,6 @@ def detect_skimage(cfgfile, weightfile, imgfile, save_path):
         finish = time.time()
         if i == 1:
             print('%s: Predicted in %f seconds.' % (imgfile, (finish-start)))
-
     class_names = load_class_names(namesfile)
     plot_boxes_cv2(img, boxes, savename=save_path, class_names=class_names)
 
